@@ -1,0 +1,6 @@
+pybullet==3.2.7
+numpy>=2.0
+pandas>=2.2
+scikit-learn>=1.5
+matplotlib>=3.9
+PyQt6>=6.7

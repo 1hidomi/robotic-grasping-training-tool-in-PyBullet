@@ -1,0 +1,19 @@
+# Virtual environments
+.pybullet-env/
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary / build / logs
+work/
+outputs/
+*.log
+
+# OS artifacts
+.DS_Store
+Thumbs.db

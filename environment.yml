@@ -1,0 +1,13 @@
+name: robotic-grasp-planner
+channels:
+  - conda-forge
+dependencies:
+  - python=3.14
+  - pybullet=3.25
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - pyqt6
+  - pyqt6-sip
+  - joblib
