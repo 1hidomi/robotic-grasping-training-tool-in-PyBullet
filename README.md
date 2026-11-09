@@ -52,7 +52,7 @@ statistics, and the single-grasp simulation form (which requires PyBullet).
 The first milestone is a reproducible single-grasp simulation.  It uses only
 assets bundled with `pybullet_data`, so no starter code or external URDF files
 are required.  The abstract `Gripper` and `GraspObject` contracts deliberately
-leave room to substitute the lecturer's assets later.
+leave room to substitute teacher's assets later.
 
 ## GitHub Synchronization
 
