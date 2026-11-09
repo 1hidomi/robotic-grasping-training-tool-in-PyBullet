@@ -53,3 +53,11 @@ The first milestone is a reproducible single-grasp simulation.  It uses only
 assets bundled with `pybullet_data`, so no starter code or external URDF files
 are required.  The abstract `Gripper` and `GraspObject` contracts deliberately
 leave room to substitute the lecturer's assets later.
+
+## GitHub Synchronization
+
+To push latest local modifications to GitHub at any time:
+
+```powershell
+.\sync.ps1 -Message "Your commit message"
+```
