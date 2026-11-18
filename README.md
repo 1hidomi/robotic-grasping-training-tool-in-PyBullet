@@ -129,13 +129,15 @@ To download the latest changes from GitHub:
 git pull origin main
 ```
 
-To upload your local changes, you can use the included PowerShell helper:
+To upload your local changes:
 
 ```powershell
-.\sync.ps1 -Message "Describe your changes"
+git add .
+git commit -m "Describe your changes"
+git push origin main
 ```
 
-The script stages all non-ignored changes, creates a commit if there are changes, and pushes the current local `main` branch to `origin/main`. Review `git status` before running it.
+Review `git status` before committing. Local virtual environments, generated outputs and SQLite user databases are excluded by `.gitignore`.
 
 ## Notes
 
