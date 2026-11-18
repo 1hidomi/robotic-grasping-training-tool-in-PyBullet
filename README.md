@@ -119,27 +119,3 @@ robotic-grasping-training-tool-in-PyBullet/
 ├── environment.yml       # Conda environment specification
 └── requirements.txt      # Python package requirements
 ```
-
-## Git workflow
-
-To download the latest changes from GitHub:
-
-```powershell
-git pull origin main
-```
-
-To upload your local changes:
-
-```powershell
-git add .
-git commit -m "Describe your changes"
-git push origin main
-```
-
-Review `git status` before committing. Local virtual environments, generated outputs and SQLite user databases are excluded by `.gitignore`.
-
-## Notes
-
-- Run commands from the repository root directory.
-- The Conda environment folder (`.pybullet-env/`) is local and is not uploaded to GitHub.
-- Do not commit passwords, API keys, personal data or other secrets.
