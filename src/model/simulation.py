@@ -98,7 +98,7 @@ class PandaGripper(Gripper):
                 time.sleep(self._time_step)
 
     def _set_fingers(self, opening: float) -> None:
-        self._require_loaded(allow_initialising=True)
+        self._require_loaded()
         for joint in self._FINGER_JOINTS:
             self._p.setJointMotorControl2(
                 self._body_id,
@@ -109,7 +109,7 @@ class PandaGripper(Gripper):
                 physicsClientId=self._client_id,
             )
 
-    def _require_loaded(self, allow_initialising: bool = False) -> None:
+    def _require_loaded(self) -> None:
         if self._body_id is None:
             raise RuntimeError("Load the Panda gripper before controlling it.")
 
@@ -243,7 +243,11 @@ class GraspSimulator:
             )
             gripper.load()
 
-            final_position = tuple(object_position[i] + pose.features()[i] for i in range(3))
+            final_position = (
+                object_position[0] + pose.x,
+                object_position[1] + pose.y,
+                object_position[2] + pose.z,
+            )
             approach_position = (final_position[0], final_position[1], final_position[2] + 0.12)
             rpy = (pose.roll, pose.pitch, pose.yaw)
             gripper.open()
