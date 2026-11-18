@@ -17,3 +17,8 @@ outputs/
 # OS artifacts
 .DS_Store
 Thumbs.db
+
+# Local application databases and user records
+*.db
+*.sqlite
+*.sqlite3
