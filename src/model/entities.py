@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -75,11 +74,3 @@ class Gripper(ABC):
     @abstractmethod
     def step(self, steps: int) -> None:
         """Advance the physics engine while maintaining motor targets."""
-
-
-class GraspObject(Protocol):
-    """Minimal protocol for a physical target object."""
-
-    name: str
-
-    def load(self, client_id: int) -> int: ...
