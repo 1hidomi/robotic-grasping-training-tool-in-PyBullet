@@ -94,7 +94,7 @@ Run the PyQt6 application using the same Conda environment:
 .\.pybullet-env\python.exe -m src.gui
 ```
 
-The GUI provides user registration/login, a grasp simulation form, saved grasp records and report statistics. In the simulation form, the shake test can optionally be enabled. It runs after a successful lift, applies alternating horizontal forces to the object and records the maximum tested stable force and the corresponding 0–100 robustness score.
+The GUI provides user registration/login, a grasp simulation form, saved grasp records and report statistics. The SQLite database is created automatically at `data/grasp_planner.db` on first launch; it stores local user accounts and experiment records and is intentionally not included in the repository. In the simulation form, the shake test can optionally be enabled. It runs after a successful lift, applies alternating horizontal forces to the object and records the maximum tested stable force and the corresponding 0–100 robustness score.
 
 ## Run tests
 
@@ -108,7 +108,7 @@ Run the unit tests from the project root:
 
 ```text
 robotic-grasping-training-tool-in-PyBullet/
-├── data/                 # Sample dataset, trained model and local database
+├── data/                 # Sample dataset and trained classifier
 ├── src/
 │   ├── controller/       # Application controllers
 │   ├── model/            # Grasping, simulation and ML logic
@@ -118,7 +118,7 @@ robotic-grasping-training-tool-in-PyBullet/
 ├── tests/                # Unit tests
 ├── environment.yml       # Conda environment specification
 ├── requirements.txt      # Python package requirements
-└── sync.ps1              # PowerShell helper to commit and push changes
+└── requirements.txt      # Python package requirements
 ```
 
 ## Git workflow
