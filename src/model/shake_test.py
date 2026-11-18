@@ -1,26 +1,20 @@
 """A small, deterministic robustness test for an already lifted grasp."""
 
 from __future__ import annotations
-
 from dataclasses import dataclass
-
 
 @dataclass(frozen=True)
 class ShakeTestResult:
     """Maximum tested force the grasp survived and its normalised score."""
-
     max_stable_force: float
     quality_score: float
     dropped: bool
 
-
 class ShakeTest:
     """Apply alternating horizontal forces and detect excessive object motion.
-
     The test applies force to the object, not to the gripper.  It is a simple
     repeatable disturbance test rather than a full contact-mechanics metric.
     """
-
     def __init__(
         self,
         force_limit: float = 1.0,
