@@ -46,8 +46,7 @@ class BalancedDatasetGenerator:
             expected_success = accepted[True] < target_per_class and (
                 accepted[False] >= target_per_class or attempts % 2 == 0
             )
-            target, gripper = self._configuration(attempts, expected_success)
-            pose = self._secure_pose() if expected_success else self._unsuitable_pose()
+            target, gripper, pose = self.sample_candidate(attempts, expected_success)
             result = self._simulator.attempt(pose, target, gripper_kind=gripper)
             attempts += 1
             if accepted[result.success] < target_per_class:
