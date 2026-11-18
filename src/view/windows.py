@@ -139,7 +139,12 @@ class MainMenuWindow(QMainWindow):
         records = self._data.records_for(user)
         message = "No saved grasp records." if not records else "\n".join(
             f"#{record.id}: {record.gripper_name} / {record.object_name} - "
-            f"{'success' if record.success else 'failure'}" for record in records
+            f"{'success' if record.success else 'failure'}"
+            + (
+                f" | quality {record.quality_score:.0f}/100"
+                if record.quality_score is not None else ""
+            )
+            for record in records
         )
         QMessageBox.information(self, "My grasp records", message)
 
