@@ -117,7 +117,6 @@ robotic-grasping-training-tool-in-PyBullet/
 │   └── main.py           # Command-line entry point
 ├── tests/                # Unit tests
 ├── environment.yml       # Conda environment specification
-├── requirements.txt      # Python package requirements
 └── requirements.txt      # Python package requirements
 ```
 
