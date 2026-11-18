@@ -23,6 +23,7 @@ class GraspController:
         target: BundledObject = CUBE,
         gripper_kind: str = "panda",
         visual: bool | None = None,
+        run_shake_test: bool = False,
     ) -> GraspResult:
         if z < -0.02:
             raise ValueError("The grasp pose cannot be below the table surface.")
@@ -33,4 +34,5 @@ class GraspController:
             target,
             gripper_kind=gripper_kind,
             visual=visual,
+            run_shake_test=run_shake_test,
         )
