@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Literal
 
 from .entities import GraspPose, GraspResult, Gripper
@@ -30,18 +29,12 @@ CUBE = BundledObject("small_cube", "cube_small.urdf", 0.025)
 SPHERE = BundledObject("small_sphere", "sphere_small.urdf", 0.03)
 
 
-class PandaGripper(Gripper):
-    """Franka Panda arm and two-finger gripper adapter.
+class _PyBulletGripper(Gripper):
+    """Shared PyBullet controls used by the two robot models."""
 
-    Although its URDF includes the arm, this class presents the narrow
-    `Gripper` behaviour needed by `GraspSimulator`.  It makes the model
-    replaceable with another gripper adapter later.
-    """
-
-    name = "franka_panda"
-    _ARM_JOINTS = range(7)
-    _FINGER_JOINTS = (9, 10)
-    _END_EFFECTOR_LINK = 11
+    _ARM_JOINTS = ()
+    _IK_TARGET_INDICES = ()
+    _END_EFFECTOR_LINK = 0
 
     def __init__(self, physics, client_id: int, visual: bool = False, time_step: float = 1 / 240) -> None:
         self._p = physics
@@ -49,6 +42,54 @@ class PandaGripper(Gripper):
         self._visual = visual
         self._time_step = time_step
         self._body_id: int | None = None
+
+    def step(self, steps: int) -> None:
+        for _ in range(steps):
+            self._p.stepSimulation(physicsClientId=self._client_id)
+            if self._visual:
+                time.sleep(self._time_step)
+
+    def _move_arm(self, position: tuple[float, float, float], rpy: tuple[float, float, float]) -> None:
+        self._require_loaded()
+        orientation = self._p.getQuaternionFromEuler(rpy, physicsClientId=self._client_id)
+        targets = self._p.calculateInverseKinematics(
+            self._body_id,
+            self._END_EFFECTOR_LINK,
+            position,
+            orientation,
+            maxNumIterations=100,
+            residualThreshold=1e-4,
+            physicsClientId=self._client_id,
+        )
+        for joint, index in zip(self._ARM_JOINTS, self._IK_TARGET_INDICES, strict=True):
+            self._p.setJointMotorControl2(
+                self._body_id, joint, self._p.POSITION_CONTROL,
+                targetPosition=targets[index], force=120.0,
+                physicsClientId=self._client_id,
+            )
+
+    def _set_fingers(self, position: float, force: float) -> None:
+        self._require_loaded()
+        for joint in self._FINGER_JOINTS:
+            self._p.setJointMotorControl2(
+                self._body_id, joint, self._p.POSITION_CONTROL,
+                targetPosition=position, force=force,
+                physicsClientId=self._client_id,
+            )
+
+    def _require_loaded(self) -> None:
+        if self._body_id is None:
+            raise RuntimeError(f"Load the {self.name} gripper before controlling it.")
+
+
+class PandaGripper(_PyBulletGripper):
+    """Franka Panda arm and two-finger gripper."""
+
+    name = "franka_panda"
+    _ARM_JOINTS = range(7)
+    _IK_TARGET_INDICES = range(7)
+    _FINGER_JOINTS = (9, 10)
+    _END_EFFECTOR_LINK = 11
 
     def load(self) -> int:
         self._body_id = self._p.loadURDF(
@@ -57,83 +98,30 @@ class PandaGripper(Gripper):
             useFixedBase=True,
             physicsClientId=self._client_id,
         )
-        # A reproducible, collision-free start configuration.
         for joint, value in enumerate((0.0, -0.65, 0.0, -2.15, 0.0, 1.55, 0.75)):
             self._p.resetJointState(self._body_id, joint, value, physicsClientId=self._client_id)
         self.open()
         return self._body_id
 
     def move_to(self, world_position: tuple[float, float, float], rpy: tuple[float, float, float]) -> None:
-        self._require_loaded()
-        orientation = self._p.getQuaternionFromEuler(rpy, physicsClientId=self._client_id)
-        joint_targets = self._p.calculateInverseKinematics(
-            self._body_id,
-            self._END_EFFECTOR_LINK,
-            world_position,
-            orientation,
-            maxNumIterations=100,
-            residualThreshold=1e-4,
-            physicsClientId=self._client_id,
-        )
-        for joint in self._ARM_JOINTS:
-            self._p.setJointMotorControl2(
-                self._body_id,
-                joint,
-                self._p.POSITION_CONTROL,
-                targetPosition=joint_targets[joint],
-                force=120.0,
-                physicsClientId=self._client_id,
-            )
+        self._move_arm(world_position, rpy)
 
     def open(self) -> None:
-        self._set_fingers(0.04)
+        self._set_fingers(0.04, 70.0)
 
     def close(self) -> None:
-        self._set_fingers(0.0)
-
-    def step(self, steps: int) -> None:
-        for _ in range(steps):
-            self._p.stepSimulation(physicsClientId=self._client_id)
-            if self._visual:
-                time.sleep(self._time_step)
-
-    def _set_fingers(self, opening: float) -> None:
-        self._require_loaded()
-        for joint in self._FINGER_JOINTS:
-            self._p.setJointMotorControl2(
-                self._body_id,
-                joint,
-                self._p.POSITION_CONTROL,
-                targetPosition=opening,
-                force=70.0,
-                physicsClientId=self._client_id,
-            )
-
-    def _require_loaded(self) -> None:
-        if self._body_id is None:
-            raise RuntimeError("Load the Panda gripper before controlling it.")
+        self._set_fingers(0.0, 70.0)
 
 
-class XArmGripper(Gripper):
-    """xArm6 with its built-in two-finger gripper.
-
-    This is a distinct robot/gripper URDF supplied in ``pybullet_data``.  The
-    gripper's hand link is above its fingertips, so ``move_to`` converts the
-    common grasp-point contract into the arm's end-effector target.
-    """
+class XArmGripper(_PyBulletGripper):
+    """xArm6 with its built-in two-finger gripper."""
 
     name = "xarm6_two_finger"
     _ARM_JOINTS = range(1, 7)
+    _IK_TARGET_INDICES = range(6)
     _FINGER_JOINTS = range(8, 14)
     _END_EFFECTOR_LINK = 7
     _HAND_ABOVE_FINGERS = 0.12
-
-    def __init__(self, physics, client_id: int, visual: bool = False, time_step: float = 1 / 240) -> None:
-        self._p = physics
-        self._client_id = client_id
-        self._visual = visual
-        self._time_step = time_step
-        self._body_id: int | None = None
 
     def load(self) -> int:
         self._body_id = self._p.loadURDF(
@@ -146,53 +134,18 @@ class XArmGripper(Gripper):
         return self._body_id
 
     def move_to(self, world_position: tuple[float, float, float], rpy: tuple[float, float, float]) -> None:
-        self._require_loaded()
         hand_position = (
             world_position[0],
             world_position[1],
             world_position[2] + self._HAND_ABOVE_FINGERS,
         )
-        orientation = self._p.getQuaternionFromEuler(rpy, physicsClientId=self._client_id)
-        joint_targets = self._p.calculateInverseKinematics(
-            self._body_id,
-            self._END_EFFECTOR_LINK,
-            hand_position,
-            orientation,
-            maxNumIterations=100,
-            residualThreshold=1e-4,
-            physicsClientId=self._client_id,
-        )
-        # PyBullet may append fixed/mimic-joint values to this solution; the
-        # six leading values correspond to xArm joints 1-6.
-        for target, joint in zip(joint_targets[:6], self._ARM_JOINTS, strict=True):
-            self._p.setJointMotorControl2(
-                self._body_id, joint, self._p.POSITION_CONTROL,
-                targetPosition=target, force=120.0, physicsClientId=self._client_id,
-            )
+        self._move_arm(hand_position, rpy)
 
     def open(self) -> None:
-        self._set_fingers(0.0)
+        self._set_fingers(0.0, 100.0)
 
     def close(self) -> None:
-        self._set_fingers(0.8)
-
-    def step(self, steps: int) -> None:
-        for _ in range(steps):
-            self._p.stepSimulation(physicsClientId=self._client_id)
-            if self._visual:
-                time.sleep(self._time_step)
-
-    def _set_fingers(self, closing_angle: float) -> None:
-        self._require_loaded()
-        for joint in self._FINGER_JOINTS:
-            self._p.setJointMotorControl2(
-                self._body_id, joint, self._p.POSITION_CONTROL,
-                targetPosition=closing_angle, force=100.0, physicsClientId=self._client_id,
-            )
-
-    def _require_loaded(self) -> None:
-        if self._body_id is None:
-            raise RuntimeError("Load the xArm gripper before controlling it.")
+        self._set_fingers(0.8, 100.0)
 
 
 class GraspSimulator:
