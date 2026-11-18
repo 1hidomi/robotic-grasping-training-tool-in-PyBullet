@@ -14,6 +14,7 @@ from src.model.classifier import GraspClassifier
 from src.model.dataset import DatasetManager, FEATURE_COLUMNS, LABEL_COLUMN
 from src.model.entities import GraspPose, GraspResult
 from src.model.sampling import SphericalPoseSampler
+from src.model.shake_test import ShakeTest
 
 
 class ModelTests(unittest.TestCase):
@@ -51,6 +52,26 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(len(poses), 3)
         self.assertEqual(len(poses[0].features()), 6)
         self.assertEqual(poses, SphericalPoseSampler(seed=7).sample(3))
+
+    def test_shake_test_returns_full_score_when_object_stays_stable(self) -> None:
+        class StablePhysics:
+            WORLD_FRAME = 2
+
+            def getBasePositionAndOrientation(self, object_id, physicsClientId):
+                return ((0.0, 0.0, 0.2), (0.0, 0.0, 0.0, 1.0))
+
+            def applyExternalForce(self, *args, **kwargs):
+                pass
+
+            def stepSimulation(self, physicsClientId):
+                pass
+
+        result = ShakeTest(
+            force_limit=0.2, force_step=0.1, steps_per_direction=1
+        ).run(StablePhysics(), 0, 1)
+        self.assertFalse(result.dropped)
+        self.assertEqual(result.max_stable_force, 0.2)
+        self.assertEqual(result.quality_score, 100.0)
 
     def test_dataset_keeps_label_as_final_column(self) -> None:
         manager = DatasetManager()
