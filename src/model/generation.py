@@ -46,8 +46,7 @@ class BalancedDatasetGenerator:
             expected_success = accepted[True] < target_per_class and (
                 accepted[False] >= target_per_class or attempts % 2 == 0
             )
-            target, gripper = self._configuration(attempts, expected_success)
-            pose = self._secure_pose() if expected_success else self._unsuitable_pose()
+            target, gripper, pose = self.sample_candidate(attempts, expected_success)
             result = self._simulator.attempt(pose, target, gripper_kind=gripper)
             attempts += 1
             if accepted[result.success] < target_per_class:
@@ -60,6 +59,12 @@ class BalancedDatasetGenerator:
                 f"accepted successes={accepted[True]}, failures={accepted[False]}."
             )
         return manager, CollectionSummary(samples, accepted[True], accepted[False], attempts)
+
+    def sample_candidate(self, attempt: int, expected_success: bool) -> tuple[BundledObject, str, GraspPose]:
+        """Return a fresh candidate for collection or independent evaluation."""
+        target, gripper = self._configuration(attempt, expected_success)
+        pose = self._secure_pose() if expected_success else self._unsuitable_pose()
+        return target, gripper, pose
 
     def _secure_pose(self) -> GraspPose:
         return GraspPose(

@@ -45,6 +45,9 @@ class DatasetManager:
                     "lift_height": item.lift_height,
                     "final_object_height": item.final_object_height,
                     "failure_reason": item.failure_reason,
+                    "max_stable_force": item.max_stable_force,
+                    "quality_score": item.quality_score,
+                    "shake_dropped": item.shake_dropped,
                 }
                 for item in self._results
             ]

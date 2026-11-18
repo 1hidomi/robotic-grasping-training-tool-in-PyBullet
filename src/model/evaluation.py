@@ -32,11 +32,8 @@ class GraspEvaluator:
         actual_successes = 0
         for index in range(attempts):
             expected_success = index % 2 == 0
-            target, gripper = self._candidate_source._configuration(index, expected_success)
-            pose = (
-                self._candidate_source._secure_pose()
-                if expected_success
-                else self._candidate_source._unsuitable_pose()
+            target, gripper, pose = self._candidate_source.sample_candidate(
+                index, expected_success
             )
             prediction = self._classifier.predict(pose)
             result = self._simulator.attempt(pose, target, gripper_kind=gripper)

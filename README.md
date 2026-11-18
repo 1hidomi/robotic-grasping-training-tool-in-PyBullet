@@ -46,6 +46,10 @@ kept in the accompanying metadata CSV.
 
 The GUI provides registration/login, per-user record browsing, report
 statistics, and the single-grasp simulation form (which requires PyBullet).
+The simulation form also has an optional shake test: after a successful lift,
+it applies alternating horizontal forces and records the maximum tested stable
+force and a simple 0-100 robustness score. The original binary `success` label
+is unchanged; shake-test measurements are stored separately.
 
 ## Current milestone
 

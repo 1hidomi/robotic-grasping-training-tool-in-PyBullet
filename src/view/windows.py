@@ -57,6 +57,9 @@ class GenerateGraspWindow(QWidget):
         self.visual_check = QCheckBox("Show 3D simulation window (PyBullet GUI)")
         self.visual_check.setChecked(True)
         layout.addWidget(self.visual_check)
+        self.shake_check = QCheckBox("Run shake test after a successful lift")
+        self.shake_check.setChecked(False)
+        layout.addWidget(self.shake_check)
         button = QPushButton("Run simulation and save my record")
         button.clicked.connect(self._run)
         layout.addWidget(button)
@@ -78,13 +81,22 @@ class GenerateGraspWindow(QWidget):
                 target=target,
                 gripper_kind=self.gripper.currentText(),
                 visual=is_visual,
+                run_shake_test=self.shake_check.isChecked(),
             )
             record_id = self._data.save_result(user, result)
         except (RuntimeError, ValueError) as error:
             QMessageBox.warning(self, "Simulation failed", str(error))
             return
         outcome = "successful" if result.success else "unsuccessful"
-        self.status.setText(f"Record {record_id} saved: {outcome}; height {result.final_object_height:.3f} m")
+        message = f"Record {record_id} saved: {outcome}; height {result.final_object_height:.3f} m"
+        if result.quality_score is not None:
+            shake_status = "dropped" if result.shake_dropped else "held"
+            message += (
+                f"; shake test: {shake_status}; "
+                f"max stable force {result.max_stable_force:.1f} N; "
+                f"quality {result.quality_score:.0f}/100"
+            )
+        self.status.setText(message)
 
 
 class MainMenuWindow(QMainWindow):
@@ -127,7 +139,12 @@ class MainMenuWindow(QMainWindow):
         records = self._data.records_for(user)
         message = "No saved grasp records." if not records else "\n".join(
             f"#{record.id}: {record.gripper_name} / {record.object_name} - "
-            f"{'success' if record.success else 'failure'}" for record in records
+            f"{'success' if record.success else 'failure'}"
+            + (
+                f" | quality {record.quality_score:.0f}/100"
+                if record.quality_score is not None else ""
+            )
+            for record in records
         )
         QMessageBox.information(self, "My grasp records", message)
 

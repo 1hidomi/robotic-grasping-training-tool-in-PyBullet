@@ -19,6 +19,9 @@ class StoredGrasp:
     object_name: str
     success: bool
     created_at: str
+    max_stable_force: float | None = None
+    quality_score: float | None = None
+    shake_dropped: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -43,13 +46,16 @@ class UserDataRepository:
                 """
                 INSERT INTO grasp_records
                 (user_id, x, y, z, roll, pitch, yaw, success, gripper_name, object_name,
-                 lift_height, final_object_height, failure_reason, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 lift_height, final_object_height, failure_reason, max_stable_force,
+                 quality_score, shake_dropped, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     user.id, *result.pose.features(), int(result.success), result.gripper_name,
                     result.object_name, result.lift_height, result.final_object_height,
-                    result.failure_reason, self._timestamp(),
+                    result.failure_reason, result.max_stable_force, result.quality_score,
+                    (None if result.shake_dropped is None else int(result.shake_dropped)),
+                    self._timestamp(),
                 ),
             )
             return int(cursor.lastrowid)
@@ -58,12 +64,19 @@ class UserDataRepository:
         with self._connect() as connection:
             rows = connection.execute(
                 """
-                SELECT id, gripper_name, object_name, success, created_at
+                SELECT id, gripper_name, object_name, success, created_at,
+                       max_stable_force, quality_score, shake_dropped
                 FROM grasp_records WHERE user_id = ? ORDER BY id DESC
                 """,
                 (user.id,),
             ).fetchall()
-        return [StoredGrasp(row[0], row[1], row[2], bool(row[3]), row[4]) for row in rows]
+        return [
+            StoredGrasp(
+                row[0], row[1], row[2], bool(row[3]), row[4],
+                row[5], row[6], None if row[7] is None else bool(row[7])
+            )
+            for row in rows
+        ]
 
     def save_model(self, user: User, path: str, validation_accuracy: float) -> int:
         with self._connect() as connection:
@@ -111,11 +124,25 @@ class UserDataRepository:
                     success INTEGER NOT NULL CHECK(success IN (0, 1)),
                     gripper_name TEXT NOT NULL, object_name TEXT NOT NULL,
                     lift_height REAL NOT NULL, final_object_height REAL NOT NULL,
-                    failure_reason TEXT, created_at TEXT NOT NULL,
+                    failure_reason TEXT, max_stable_force REAL, quality_score REAL,
+                    shake_dropped INTEGER, created_at TEXT NOT NULL,
                     FOREIGN KEY(user_id) REFERENCES users(id)
                 )
                 """
             )
+            # Add the optional robustness columns to databases created by older versions.
+            columns = {
+                row[1] for row in connection.execute("PRAGMA table_info(grasp_records)")
+            }
+            for name, sql_type in (
+                ("max_stable_force", "REAL"),
+                ("quality_score", "REAL"),
+                ("shake_dropped", "INTEGER"),
+            ):
+                if name not in columns:
+                    connection.execute(
+                        f"ALTER TABLE grasp_records ADD COLUMN {name} {sql_type}"
+                    )
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS trained_models (

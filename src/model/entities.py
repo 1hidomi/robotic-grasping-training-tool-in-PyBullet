@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -42,6 +41,9 @@ class GraspResult:
     lift_height: float
     final_object_height: float
     failure_reason: str | None = None
+    max_stable_force: float | None = None
+    quality_score: float | None = None
+    shake_dropped: bool | None = None
 
 
 class Gripper(ABC):
@@ -54,7 +56,7 @@ class Gripper(ABC):
     name: str
 
     @abstractmethod
-    def load(self, client_id: int) -> int:
+    def load(self) -> int:
         """Load the gripper and return its PyBullet body id."""
 
     @abstractmethod
@@ -72,11 +74,3 @@ class Gripper(ABC):
     @abstractmethod
     def step(self, steps: int) -> None:
         """Advance the physics engine while maintaining motor targets."""
-
-
-class GraspObject(Protocol):
-    """Minimal protocol for a physical target object."""
-
-    name: str
-
-    def load(self, client_id: int) -> int: ...

@@ -13,7 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from .entities import GraspPose, GraspResult
+from .entities import GraspPose, GraspResult, Gripper
+from .shake_test import ShakeTest
 
 
 @dataclass(frozen=True)
@@ -29,7 +30,7 @@ CUBE = BundledObject("small_cube", "cube_small.urdf", 0.025)
 SPHERE = BundledObject("small_sphere", "sphere_small.urdf", 0.03)
 
 
-class PandaGripper:
+class PandaGripper(Gripper):
     """Franka Panda arm and two-finger gripper adapter.
 
     Although its URDF includes the arm, this class presents the narrow
@@ -97,7 +98,7 @@ class PandaGripper:
                 time.sleep(self._time_step)
 
     def _set_fingers(self, opening: float) -> None:
-        self._require_loaded(allow_initialising=True)
+        self._require_loaded()
         for joint in self._FINGER_JOINTS:
             self._p.setJointMotorControl2(
                 self._body_id,
@@ -108,12 +109,12 @@ class PandaGripper:
                 physicsClientId=self._client_id,
             )
 
-    def _require_loaded(self, allow_initialising: bool = False) -> None:
+    def _require_loaded(self) -> None:
         if self._body_id is None:
             raise RuntimeError("Load the Panda gripper before controlling it.")
 
 
-class XArmGripper:
+class XArmGripper(Gripper):
     """xArm6 with its built-in two-finger gripper.
 
     This is a distinct robot/gripper URDF supplied in ``pybullet_data``.  The
@@ -208,6 +209,7 @@ class GraspSimulator:
         gripper_kind: Literal["panda", "xarm"] = "panda",
         hold_seconds: float = 3.1,
         visual: bool | None = None,
+        run_shake_test: bool = False,
     ) -> GraspResult:
         """Execute open -> approach -> close -> lift -> hold and label it."""
         is_visual = self.visual if visual is None else visual
@@ -241,7 +243,11 @@ class GraspSimulator:
             )
             gripper.load()
 
-            final_position = tuple(object_position[i] + pose.features()[i] for i in range(3))
+            final_position = (
+                object_position[0] + pose.x,
+                object_position[1] + pose.y,
+                object_position[2] + pose.z,
+            )
             approach_position = (final_position[0], final_position[1], final_position[2] + 0.12)
             rpy = (pose.roll, pose.pitch, pose.yaw)
             gripper.open()
@@ -258,6 +264,12 @@ class GraspSimulator:
             gripper.step(max(1, int(hold_seconds / self.time_step)))
             final_height = p.getBasePositionAndOrientation(object_id, physicsClientId=client_id)[0][2]
             success = final_height > target.half_height + 0.08
+            shake_result = None
+            if success and run_shake_test:
+                shake_result = ShakeTest().run(p, client_id, object_id)
+                final_height = p.getBasePositionAndOrientation(
+                    object_id, physicsClientId=client_id
+                )[0][2]
             if is_visual:
                 # Keep the scene visible briefly so the user can see the lifted object
                 time.sleep(2.0)
@@ -269,6 +281,9 @@ class GraspSimulator:
                 lift_height=0.18,
                 final_object_height=final_height,
                 failure_reason=None if success else "object_not_held_after_lift",
+                max_stable_force=(shake_result.max_stable_force if shake_result else None),
+                quality_score=(shake_result.quality_score if shake_result else None),
+                shake_dropped=(shake_result.dropped if shake_result else None),
             )
         finally:
             p.disconnect(physicsClientId=client_id)
