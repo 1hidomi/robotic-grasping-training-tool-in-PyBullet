@@ -42,6 +42,9 @@ class GraspResult:
     lift_height: float
     final_object_height: float
     failure_reason: str | None = None
+    max_stable_force: float | None = None
+    quality_score: float | None = None
+    shake_dropped: bool | None = None
 
 
 class Gripper(ABC):
@@ -54,7 +57,7 @@ class Gripper(ABC):
     name: str
 
     @abstractmethod
-    def load(self, client_id: int) -> int:
+    def load(self) -> int:
         """Load the gripper and return its PyBullet body id."""
 
     @abstractmethod
